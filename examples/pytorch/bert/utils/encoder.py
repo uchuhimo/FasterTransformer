@@ -19,7 +19,7 @@ import torch
 import torch.distributed as dist
 
 from transformers import BertConfig
-from transformers.modeling_bert import BertEncoder
+from transformers.models.bert.modeling_bert import BertEncoder
 from .checkpoint_quantization import checkpoint_quantization
 
 class EncoderWeights(object):
