@@ -143,7 +143,7 @@ int bertINT8Example(size_t batch_size,
     int*         h_sequence_lengths = new int[batch_size];
     unsigned int seed               = 0;
     for (uint i = 0; i < batch_size; i++) {
-        h_sequence_lengths[i] = rand_r(&seed) % seq_len;
+        h_sequence_lengths[i] = seq_len;
     }
     int* d_sequence_lengths;
     deviceMalloc(&d_sequence_lengths, batch_size);
