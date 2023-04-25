@@ -726,7 +726,7 @@ bool FusedAttentionLayerINT8<T>::isValidSeqLen(size_t seq_len)
     if (sm_ < 75 || (sm_ == 75 && size_per_head_ == 64))
         return seq_len <= max_seq_len_ && seq_len <= 384;
     else
-        return seq_len <= max_seq_len_ && seq_len <= 512;
+        return seq_len <= max_seq_len_ && seq_len <= 1024;
 }
 
 template class FusedAttentionLayerINT8<float>;
