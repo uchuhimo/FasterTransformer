@@ -15,20 +15,20 @@
  */
 
 #include "cnpy.h"
-#include "src/fastertransformer/models/xlnet/Xlnet.h"
+#include "src/fastertransformer/models/deberta/Deberta.h"
 #include "src/fastertransformer/utils/nvtx_utils.h"
 
 using namespace fastertransformer;
 
 template<typename T>
-int xlnetExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t head_num, size_t size_per_head);
+int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t head_num, size_t size_per_head);
 
 int main(int argc, char** argv)
 {
     if (argc != 7) {
-        printf("[ERROR] xlnet_example <batch_size> <num_layers> <seq_len> <head_num> "
+        printf("[ERROR] deberta_example <batch_size> <num_layers> <seq_len> <head_num> "
                "<size_per_head> <data_type, 0: fp32, 1: fp16, 2: bf16>\n");
-        printf("e.g., ./bin/xlnet_example 8 12 128 12 64 0\n");
+        printf("e.g., ./bin/deberta_example 8 12 128 12 64 0\n");
         return 0;
     }
 
@@ -38,17 +38,19 @@ int main(int argc, char** argv)
     int            head_num      = atoi(argv[4]);
     int            size_per_head = atoi(argv[5]);
     FtCudaDataType data_type     = static_cast<FtCudaDataType>(atoi(argv[6]));  // 0: fp32, 1: fp16, 2: bf16
+    int            max_relative_positions    = atoi(argv[7]);
+    int            relative_position_buckets = atoi(argv[8]);
 
     if (data_type == FP32) {
-        return xlnetExample<float>(batch_size, num_layers, seq_len, head_num, size_per_head);
+        return debertaExample<float>(batch_size, num_layers, seq_len, head_num, size_per_head);
     }
 #ifdef ENABLE_BF16
     else if (data_type == BF16) {
-        return xlnetExample<__nv_bfloat16>(batch_size, num_layers, seq_len, head_num, size_per_head);
+        return debertaExample<__nv_bfloat16>(batch_size, num_layers, seq_len, head_num, size_per_head);
     }
 #endif
     else if (data_type == FP16) {
-        return xlnetExample<half>(batch_size, num_layers, seq_len, head_num, size_per_head);
+        return debertaExample<half>(batch_size, num_layers, seq_len, head_num, size_per_head);
     }
     else {
         throw std::runtime_error(std::string("[FT][ERROR] data_type should be fp32, fp16, or bf16 \n "));
@@ -56,7 +58,7 @@ int main(int argc, char** argv)
 }
 
 template<typename T>
-int xlnetExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t head_num, size_t size_per_head)
+int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t head_num, size_t size_per_head)
 {
     printf("[INFO] Device: %s \n", getDeviceName().c_str());
 
@@ -93,7 +95,7 @@ int xlnetExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t he
     }
 
     // Set layer weight
-    std::vector<XlnetLayerWeight<T>> xlnet_layer_weights(num_layers, XlnetLayerWeight<T>(hidden_units, inter_size));
+    std::vector<DebertaLayerWeight<T>> deberta_layer_weights(num_layers, DebertaLayerWeight<T>(hidden_units, inter_size));
 
     // Allocate Input & Output
     T* word_emb_k;
@@ -114,21 +116,30 @@ int xlnetExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t he
     std::vector<Tensor> output_tensors = std::vector<Tensor>{
         Tensor{MEMORY_GPU, getTensorType<T>(), std::vector<size_t>{batch_size, seq_len, hidden_units}, out_tensor}};
 
-    Xlnet<T> xlnet = Xlnet<T>(batch_size,
+    Deberta<T> deberta = Deberta<T>(batch_size,
                               seq_len,
                               head_num,
                               size_per_head,
+                              max_relative_positions,
+                              relative_position_buckets,
                               inter_size,
                               num_layers,
                               1.0f,
                               stream,
                               &cublas_wrapper,
                               &allocator,
+                              false,
+                              false,
+                              ActivationType::Gelu,
+                              LayerNormType::post_layernorm,
+                              1,
+                              1,
+                              nullptr,
                               false);
 
     // warmup
     for (int i = 0; i < 10; i++) {
-        xlnet.forward(&output_tensors, &input_tensors, &xlnet_layer_weights);
+        deberta.forward(&output_tensors, &input_tensors, &deberta_layer_weights);
     }
 
     // profile time
@@ -136,7 +147,7 @@ int xlnetExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t he
     CudaTimer cuda_timer(stream);
     cuda_timer.start();
     for (int i = 0; i < ite; i++) {
-        xlnet.forward(&output_tensors, &input_tensors, &xlnet_layer_weights);
+        deberta.forward(&output_tensors, &input_tensors, &deberta_layer_weights);
     }
     float total_time = cuda_timer.stop();
 
