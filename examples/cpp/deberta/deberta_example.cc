@@ -143,7 +143,7 @@ int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t 
     CudaTimer cuda_timer(stream);
     cuda_timer.start();
     for (int i = 0; i < ite; i++) {
-        deberta.forward(&output_tensors, &input_tensors, &deberta_layer_weights);
+        deberta.forward(&output_tensors, &input_tensors, &deberta_weights);
     }
     float total_time = cuda_timer.stop();
 
