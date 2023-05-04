@@ -98,20 +98,25 @@ int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t 
     DebertaWeight<T> deberta_weights(hidden_units, inter_size, max_relative_positions, relative_position_buckets, vocab_size, num_layers);
 
     // Allocate Input & Output
-    T* word_emb_k;
-    deviceMalloc(&word_emb_k, batch_size * seq_len * hidden_units, false);
-    float* input_mask;
-    deviceMalloc(&input_mask, batch_size * seq_len, false);
-    int* seg_id;
-    deviceMalloc(&seg_id, batch_size * seq_len, false);
+    T* input_ids;
+    deviceMalloc(&input_ids, batch_size * seq_len, false);
 
     T* out_tensor;
     deviceMalloc(&out_tensor, batch_size * seq_len * hidden_units, false);
 
+    int*         h_sequence_lengths = new int[batch_size];
+    unsigned int seed               = 0;
+    for (uint i = 0; i < batch_size; i++) {
+        h_sequence_lengths[i] = seq_len;
+    }
+    int* d_sequence_lengths;
+    deviceMalloc(&d_sequence_lengths, batch_size, false);
+    cudaH2Dcpy(d_sequence_lengths, h_sequence_lengths, batch_size);
+    delete[] h_sequence_lengths;
+
     std::vector<Tensor> input_tensors = std::vector<Tensor>{
-        Tensor{MEMORY_GPU, getTensorType<T>(), std::vector<size_t>{batch_size, seq_len, hidden_units}, word_emb_k},
-        Tensor{MEMORY_GPU, getTensorType<float>(), std::vector<size_t>{batch_size, seq_len}, input_mask},
-        Tensor{MEMORY_GPU, getTensorType<int>(), std::vector<size_t>{batch_size, seq_len}, seg_id}};
+        Tensor{MEMORY_GPU, getTensorType<T>(), std::vector<size_t>{batch_size, seq_len}, input_ids},
+        Tensor{MEMORY_GPU, TYPE_INT32, std::vector<size_t>{batch_size}, d_sequence_lengths}};
 
     std::vector<Tensor> output_tensors = std::vector<Tensor>{
         Tensor{MEMORY_GPU, getTensorType<T>(), std::vector<size_t>{batch_size, seq_len, hidden_units}, out_tensor}};
@@ -158,9 +163,8 @@ int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t 
     delete cublas_algo_map;
     delete cublas_wrapper_mutex;
 
-    cudaFree(word_emb_k);
-    cudaFree(input_mask);
-    cudaFree(seg_id);
+    cudaFree(input_ids);
+    deviceFree(d_sequence_lengths);
     cudaFree(out_tensor);
 
     return 0;
