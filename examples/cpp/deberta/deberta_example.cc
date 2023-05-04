@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include "cnpy.h"
 #include "src/fastertransformer/models/deberta/Deberta.h"
 #include "src/fastertransformer/utils/nvtx_utils.h"
 
