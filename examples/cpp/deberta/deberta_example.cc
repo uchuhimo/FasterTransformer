@@ -24,10 +24,10 @@ int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t 
 
 int main(int argc, char** argv)
 {
-    if (argc != 7) {
+    if (argc != 10) {
         printf("[ERROR] deberta_example <batch_size> <num_layers> <seq_len> <head_num> "
                "<size_per_head> <data_type, 0: fp32, 1: fp16, 2: bf16> <vocab_size> <max_relative_positions> <relative_position_buckets>\n");
-        printf("e.g., ./bin/deberta_example 8 12 128 12 64 0\n");
+        printf("e.g., ./bin/deberta_example 8 12 128 12 64 0 128100 512 256\n");
         return 0;
     }
 
