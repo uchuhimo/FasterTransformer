@@ -98,14 +98,20 @@ int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t 
     DebertaWeight<T> deberta_weights(hidden_units, inter_size, max_relative_positions, relative_position_buckets, vocab_size, num_layers);
 
     // Allocate Input & Output
-    T* input_ids;
-    deviceMalloc(&input_ids, batch_size * seq_len, false);
-
     T* out_tensor;
     deviceMalloc(&out_tensor, batch_size * seq_len * hidden_units, false);
 
-    int*         h_sequence_lengths = new int[batch_size];
+    int*         h_input_ids = new int[batch_size * seq_len];
     unsigned int seed               = 0;
+    for (uint i = 0; i < batch_size * seq_len; i++) {
+        h_input_ids[i] = rand_r(&seed) % vocab_size;
+    }
+    int* d_input_ids;
+    deviceMalloc(&d_input_ids, batch_size * seq_len, false);
+    cudaH2Dcpy(d_input_ids, h_input_ids, batch_size * seq_len);
+    delete[] h_input_ids;
+
+    int*         h_sequence_lengths = new int[batch_size];
     for (uint i = 0; i < batch_size; i++) {
         h_sequence_lengths[i] = seq_len;
     }
@@ -115,7 +121,7 @@ int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t 
     delete[] h_sequence_lengths;
 
     std::vector<Tensor> input_tensors = std::vector<Tensor>{
-        Tensor{MEMORY_GPU, getTensorType<T>(), std::vector<size_t>{batch_size, seq_len}, input_ids},
+        Tensor{MEMORY_GPU, getTensorType<T>(), std::vector<size_t>{batch_size, seq_len}, d_input_ids},
         Tensor{MEMORY_GPU, TYPE_INT32, std::vector<size_t>{batch_size}, d_sequence_lengths}};
 
     std::vector<Tensor> output_tensors = std::vector<Tensor>{
@@ -163,7 +169,7 @@ int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t 
     delete cublas_algo_map;
     delete cublas_wrapper_mutex;
 
-    cudaFree(input_ids);
+    cudaFree(d_input_ids);
     deviceFree(d_sequence_lengths);
     cudaFree(out_tensor);
 
