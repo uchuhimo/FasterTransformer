@@ -20,7 +20,7 @@
 using namespace fastertransformer;
 
 template<typename T>
-int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t head_num, size_t size_per_head);
+int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t head_num, size_t size_per_head, size_t max_relative_positions, size_t relative_position_buckets);
 
 int main(int argc, char** argv)
 {
@@ -41,15 +41,15 @@ int main(int argc, char** argv)
     int            relative_position_buckets = atoi(argv[8]);
 
     if (data_type == FP32) {
-        return debertaExample<float>(batch_size, num_layers, seq_len, head_num, size_per_head);
+        return debertaExample<float>(batch_size, num_layers, seq_len, head_num, size_per_head, max_relative_positions, relative_position_buckets);
     }
 #ifdef ENABLE_BF16
     else if (data_type == BF16) {
-        return debertaExample<__nv_bfloat16>(batch_size, num_layers, seq_len, head_num, size_per_head);
+        return debertaExample<__nv_bfloat16>(batch_size, num_layers, seq_len, head_num, size_per_head, max_relative_positions, relative_position_buckets);
     }
 #endif
     else if (data_type == FP16) {
-        return debertaExample<half>(batch_size, num_layers, seq_len, head_num, size_per_head);
+        return debertaExample<half>(batch_size, num_layers, seq_len, head_num, size_per_head, max_relative_positions, relative_position_buckets);
     }
     else {
         throw std::runtime_error(std::string("[FT][ERROR] data_type should be fp32, fp16, or bf16 \n "));
@@ -57,7 +57,7 @@ int main(int argc, char** argv)
 }
 
 template<typename T>
-int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t head_num, size_t size_per_head)
+int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t head_num, size_t size_per_head, size_t max_relative_positions, size_t relative_position_buckets)
 {
     printf("[INFO] Device: %s \n", getDeviceName().c_str());
 
