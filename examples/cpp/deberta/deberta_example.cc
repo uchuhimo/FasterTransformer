@@ -130,11 +130,7 @@ int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t 
                               false,
                               false,
                               ActivationType::Gelu,
-                              LayerNormType::post_layernorm,
-                              1,
-                              1,
-                              nullptr,
-                              false);
+                              LayerNormType::post_layernorm);
 
     // warmup
     for (int i = 0; i < 10; i++) {
