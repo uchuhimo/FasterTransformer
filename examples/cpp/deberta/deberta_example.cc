@@ -20,13 +20,13 @@
 using namespace fastertransformer;
 
 template<typename T>
-int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t head_num, size_t size_per_head, size_t max_relative_positions, size_t relative_position_buckets);
+int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t head_num, size_t size_per_head, size_t vocab_size, size_t max_relative_positions, size_t relative_position_buckets);
 
 int main(int argc, char** argv)
 {
     if (argc != 7) {
         printf("[ERROR] deberta_example <batch_size> <num_layers> <seq_len> <head_num> "
-               "<size_per_head> <data_type, 0: fp32, 1: fp16, 2: bf16>\n");
+               "<size_per_head> <data_type, 0: fp32, 1: fp16, 2: bf16> <vocab_size> <max_relative_positions> <relative_position_buckets>\n");
         printf("e.g., ./bin/deberta_example 8 12 128 12 64 0\n");
         return 0;
     }
@@ -37,19 +37,20 @@ int main(int argc, char** argv)
     int            head_num      = atoi(argv[4]);
     int            size_per_head = atoi(argv[5]);
     FtCudaDataType data_type     = static_cast<FtCudaDataType>(atoi(argv[6]));  // 0: fp32, 1: fp16, 2: bf16
-    int            max_relative_positions    = atoi(argv[7]);
-    int            relative_position_buckets = atoi(argv[8]);
+    int            vocab_size    = atoi(argv[7]);
+    int            max_relative_positions    = atoi(argv[8]);
+    int            relative_position_buckets = atoi(argv[9]);
 
     if (data_type == FP32) {
-        return debertaExample<float>(batch_size, num_layers, seq_len, head_num, size_per_head, max_relative_positions, relative_position_buckets);
+        return debertaExample<float>(batch_size, num_layers, seq_len, head_num, size_per_head, vocab_size, max_relative_positions, relative_position_buckets);
     }
 #ifdef ENABLE_BF16
     else if (data_type == BF16) {
-        return debertaExample<__nv_bfloat16>(batch_size, num_layers, seq_len, head_num, size_per_head, max_relative_positions, relative_position_buckets);
+        return debertaExample<__nv_bfloat16>(batch_size, num_layers, seq_len, head_num, size_per_head, vocab_size, max_relative_positions, relative_position_buckets);
     }
 #endif
     else if (data_type == FP16) {
-        return debertaExample<half>(batch_size, num_layers, seq_len, head_num, size_per_head, max_relative_positions, relative_position_buckets);
+        return debertaExample<half>(batch_size, num_layers, seq_len, head_num, size_per_head, vocab_size, max_relative_positions, relative_position_buckets);
     }
     else {
         throw std::runtime_error(std::string("[FT][ERROR] data_type should be fp32, fp16, or bf16 \n "));
@@ -57,7 +58,7 @@ int main(int argc, char** argv)
 }
 
 template<typename T>
-int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t head_num, size_t size_per_head, size_t max_relative_positions, size_t relative_position_buckets)
+int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t head_num, size_t size_per_head, size_t vocab_size, size_t max_relative_positions, size_t relative_position_buckets)
 {
     printf("[INFO] Device: %s \n", getDeviceName().c_str());
 
@@ -94,7 +95,7 @@ int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t 
     }
 
     // Set layer weight
-    std::vector<DebertaLayerWeight<T>> deberta_layer_weights(num_layers, DebertaLayerWeight<T>(hidden_units, inter_size));
+    DebertaWeight<T> deberta_weights(hidden_units, inter_size, max_relative_positions, relative_position_buckets, vocab_size, num_layers);
 
     // Allocate Input & Output
     T* word_emb_k;
@@ -134,7 +135,7 @@ int debertaExample(size_t batch_size, size_t num_layers, size_t seq_len, size_t 
 
     // warmup
     for (int i = 0; i < 10; i++) {
-        deberta.forward(&output_tensors, &input_tensors, &deberta_layer_weights);
+        deberta.forward(&output_tensors, &input_tensors, &deberta_weights);
     }
 
     // profile time
